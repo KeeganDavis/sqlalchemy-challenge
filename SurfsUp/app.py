@@ -52,6 +52,7 @@ app = Flask(__name__)
 @app.route("/")
 def welcome():
     '''List all available api routes.''' 
+    
     return(
         f"<h1>Climate App</h1><br/>"
         f"<h2>Available Routes:</h2><br/>"
@@ -68,8 +69,10 @@ def welcome():
 @app.route("/api/v1.0/precipitation")
 def precipitation():
     '''Retrieve the last 12 months precipitation data''' 
+    
     # capture the variables returned from the function
     most_recent_date, year_ago_str = get_year_ago()
+    
     with Session(engine) as session:
         # Perform a query to retrieve the data and precipitation scores
         precipitation_results = session.query(Measurement.date, Measurement.prcp).\
@@ -85,6 +88,7 @@ def precipitation():
 @app.route("/api/v1.0/stations")
 def stations():
     '''Return JSON list of all stations''' 
+    
     with Session(engine) as session:
         # query the name and id of the stations
         station_names = session.query(Station.station, Station.name).all()
@@ -98,8 +102,10 @@ def stations():
 @app.route("/api/v1.0/tobs")
 def tobs():
     '''Return JSON list of temperature observations for last 12 months''' 
+    
     # capture the variables returned from the function
     most_recent_date, year_ago_str = get_year_ago()
+    
     with Session(engine) as session:
         # query the tobs from the most active station for the last 12 months of data
         most_active_station = session.query(Measurement.tobs).\
@@ -115,13 +121,14 @@ def tobs():
     
 @app.route("/api/v1.0/<start>")
 def input_start(start):
-    '''Return a JSON list of the min temp, avg temp, and max temp for the date''' 
-    date = start
+    '''Return a JSON list of the min temp, avg temp, and max temp from the date to the end of the database''' 
+    
     with Session(engine) as session:
-    
+        # query the database to calculate the min, avg, and max temp
         date_query = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-            filter(Measurement.date >= date).all()
-    
+            filter(Measurement.date >= (start)).all()
+            
+    # access list and then tuple index to get desired values
     date_list = [{'Minimum Temperature': date_query[0][0], 'Average Temperature': date_query[0][1], 'Maximum Temperature': date_query[0][2]}]
     
     return jsonify(date_list)
@@ -129,13 +136,13 @@ def input_start(start):
 
 @app.route("/api/v1.0/<start>/<end>")
 def input_start_end(start, end):
-    '''Return JSON list of the min temp, avg temp, and max temp for the range''' 
-    
+    '''Return JSON list of the min temp, avg temp, and max temp for the range of dates''' 
     with Session(engine) as session:
-    
+        # calculate min, avg, and max temp for the date range
         date_query = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
             filter(Measurement.date >= start, Measurement.date <= end).all()
-    
+            
+    # access list and then tuple index to get desired values
     date_list = [{'Minimum Temperature': date_query[0][0], 'Average Temperature': date_query[0][1], 'Maximum Temperature': date_query[0][2]}]
     
     return jsonify(date_list)
