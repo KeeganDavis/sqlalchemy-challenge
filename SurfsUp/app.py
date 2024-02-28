@@ -24,8 +24,6 @@ Base.prepare(autoload_with=engine)
 Measurement = Base.classes.measurement
 Station = Base.classes.station
 
-# Create our session (link) from Python to the DB
-
 
 #################################################
 # Flask Setup
@@ -51,27 +49,26 @@ def welcome():
 @app.route("/api/v1.0/precipitation")
 def precipitation():
     '''Retrieve the last 12 months precipitation data''' 
-    session = Session(engine)
-    # Get most recent date and format to int to be able to calculate timedelta
-    most_recent_date = session.query(Measurement).order_by(Measurement.date.desc()).first().date
-    most_recent_date_formatted = most_recent_date.split('-')
-    most_recent_year = int(most_recent_date_formatted[0])
-    most_recent_month = int(most_recent_date_formatted[1])
-    most_recent_day = int(most_recent_date_formatted[2])    
+    with Session(engine) as session:
+        # Get most recent date and format to int to be able to calculate timedelta
+        most_recent_date = session.query(Measurement).order_by(Measurement.date.desc()).first().date
+        most_recent_date_formatted = most_recent_date.split('-')
+        most_recent_year = int(most_recent_date_formatted[0])
+        most_recent_month = int(most_recent_date_formatted[1])
+        most_recent_day = int(most_recent_date_formatted[2])    
 
-    # Calculate the date one year from the last date in data set and convert to string
-    year_ago = dt.datetime(most_recent_year, most_recent_month, most_recent_day) - dt.timedelta(days=365)
-    year_ago_str = year_ago.strftime('%Y-%m-%d')
-    year_ago_str
+        # Calculate the date one year from the last date in data set and convert to string
+        year_ago = dt.datetime(most_recent_year, most_recent_month, most_recent_day) - dt.timedelta(days=365)
+        year_ago_str = year_ago.strftime('%Y-%m-%d')
+        year_ago_str
 
 
-    # Perform a query to retrieve the data and precipitation scores
-    precipitation_results = session.query(Measurement.date, Measurement.prcp).\
-        filter(Measurement.date >= year_ago_str, Measurement.date <= most_recent_date).\
-        all()
-        
-    session.close()
+        # Perform a query to retrieve the data and precipitation scores
+        precipitation_results = session.query(Measurement.date, Measurement.prcp).\
+            filter(Measurement.date >= year_ago_str, Measurement.date <= most_recent_date).\
+            all()
     
+    # add the data to a dict in a list where the key is the date and the value is the precipitation
     precipitation_dict = [{result.date: result.prcp} for result in precipitation_results]
     
     return jsonify(precipitation_dict)
@@ -79,12 +76,11 @@ def precipitation():
 @app.route("/api/v1.0/stations")
 def stations():
     '''Return JSON list of all stations''' 
-    session = Session(engine)
-    
-    station_names = session.query(Station.station, Station.name).all()
-    
-    session.close()
-    
+    with Session(engine) as session:
+        # query the name and id of the stations
+        station_names = session.query(Station.station, Station.name).all()
+        
+    # add the data to a dict in a list where the station id is the key and the station name is the value
     station_dict = [{result.station: result.name} for result in station_names]
     
     return jsonify(station_dict)
@@ -92,27 +88,26 @@ def stations():
 @app.route("/api/v1.0/tobs")
 def tobs():
     '''Return JSON list of temperature observations for last 12 months''' 
-    # Get most recent date and format to int to be able to calculate timedelta
-    session = Session(engine)
-    most_recent_date = session.query(Measurement).order_by(Measurement.date.desc()).first().date
-    most_recent_date_formatted = most_recent_date.split('-')
-    most_recent_year = int(most_recent_date_formatted[0])
-    most_recent_month = int(most_recent_date_formatted[1])
-    most_recent_day = int(most_recent_date_formatted[2])    
+    with Session(engine) as session:
+        # Get most recent date and format to int to be able to calculate timedelta
+        most_recent_date = session.query(Measurement).order_by(Measurement.date.desc()).first().date
+        most_recent_date_formatted = most_recent_date.split('-')
+        most_recent_year = int(most_recent_date_formatted[0])
+        most_recent_month = int(most_recent_date_formatted[1])
+        most_recent_day = int(most_recent_date_formatted[2])    
 
-    # Calculate the date one year from the last date in data set and convert to string
-    year_ago = dt.datetime(most_recent_year, most_recent_month, most_recent_day) - dt.timedelta(days=365)
-    year_ago_str = year_ago.strftime('%Y-%m-%d')
-    year_ago_str
+        # Calculate the date one year from the last date in data set and convert to string
+        year_ago = dt.datetime(most_recent_year, most_recent_month, most_recent_day) - dt.timedelta(days=365)
+        year_ago_str = year_ago.strftime('%Y-%m-%d')
+        year_ago_str
+        
+        # query the tobs from the most active station for the last 12 months of data
+        most_active_station = session.query(Measurement.tobs).\
+        filter(Measurement.station == 'USC00519281').\
+        filter(Measurement.date >= year_ago_str, Measurement.date <= most_recent_date).\
+        all()
     
-    
-    most_active_station = session.query(Measurement.tobs).\
-    filter(Measurement.station == 'USC00519281').\
-    filter(Measurement.date >= year_ago_str, Measurement.date <= most_recent_date).\
-    all()
-    
-    session.close()
-    
+    # add all temps to a list to be used as JSON for the webpage
     temps_list = [result.tobs for result in most_active_station]
     
     return jsonify(temps_list)
