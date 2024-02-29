@@ -8,8 +8,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 
 from flask import Flask, jsonify
-
-
 #################################################
 # Database Setup
 #################################################
@@ -23,7 +21,6 @@ Base.prepare(autoload_with=engine)
 # Save references to each table
 Measurement = Base.classes.measurement
 Station = Base.classes.station
-
 
 def get_year_ago():
     '''finds the most recent date from the dataset and returns the most recent date the date a year before the most recent date'''
@@ -45,7 +42,6 @@ def get_year_ago():
 # Flask Setup
 #################################################
 app = Flask(__name__)
-
 #################################################
 # Flask Routes
 #################################################
